@@ -1,0 +1,70 @@
+services:
+  agent:
+    image: nousresearch/hermes-agent:latest
+    restart: unless-stopped
+    volumes:
+      - ./data:/opt/data
+    ports:
+      - "${GATEWAY_PORT:-8642}:8642"
+    environment:
+      API_SERVER_KEY: ${API_SERVER_KEY}
+      API_SERVER_HOST: 0.0.0.0
+    command: ["gateway", "run"]
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+  dashboard:
+    image: nousresearch/hermes-agent:latest
+    restart: unless-stopped
+    depends_on:
+      - agent
+    volumes:
+      - ./data:/opt/data
+    environment:
+      - GATEWAY_HEALTH_URL=http://agent:8642
+    expose:
+      - "9119"
+    command: ["dashboard", "--host", "0.0.0.0", "--insecure"]
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+  dashboard-proxy:
+    image: nginx:alpine
+    restart: unless-stopped
+    depends_on:
+      - dashboard
+    networks:
+      - default
+    ports:
+      - "${DASHBOARD_PORT:-9119}:9119"
+    volumes:
+      - ./nginx-dashboard.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./.htpasswd:/etc/nginx/auth/.htpasswd:ro
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+      - /tmp
+
+  anytype:
+    image: ghcr.io/anyproto/anytype-cli:latest
+    init: true
+    restart: unless-stopped
+    command: ["serve", "--listen-address", "0.0.0.0:31012"]
+    expose:
+      - "31012"
+    volumes:
+      - anytype_data:/root/.config/anytype
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+  cdp-proxy:
+    image: nginx:alpine
+    restart: unless-stopped
+    volumes:
+      - ./nginx-cdp.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "9223:9223"
+
+volumes:
+  anytype_data:
