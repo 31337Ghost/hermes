@@ -74,8 +74,8 @@ services:
     logging: *default-logging
     volumes:
       - ./nginx-cdp.conf:/etc/nginx/conf.d/default.conf:ro
-    ports:
-      - "9223:9223"
+    expose:
+      - "9223"
 
 volumes:
   anytype_data:
