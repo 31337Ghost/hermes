@@ -1,23 +1,14 @@
 COMPOSE := docker compose
 HTPASSWD_FILE := .htpasswd
 
--include .env
-
-AGENT_DOCKER_SOCKET ?= 0
-COMPOSE_FILES := -f docker-compose.yml
-
-ifneq ($(filter 1 true yes on,$(AGENT_DOCKER_SOCKET)),)
-COMPOSE_FILES += -f docker-compose.agent-docker.yml
-endif
-
 .PHONY: up watchtower update dashboard-passwd
 
 up:
 	mkdir -p ./data
-	$(COMPOSE) $(COMPOSE_FILES) up -d --pull always
+	$(COMPOSE) -f docker-compose.yml up -d --pull always
 
 watchtower:
-	COMPOSE_PROFILES=watchtower $(COMPOSE) $(COMPOSE_FILES) up -d --pull always watchtower
+	COMPOSE_PROFILES=watchtower $(COMPOSE) -f docker-compose.yml up -d --pull always watchtower
 
 update:
 	git fetch origin && git checkout -B main origin/main
