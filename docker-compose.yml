@@ -62,8 +62,11 @@ services:
     logging: *default-logging
     command: ["serve", "--listen-address", "0.0.0.0:31012"]
     expose:
+      - "31010"
+      - "31011"
       - "31012"
     volumes:
+      - anytype_home:/root/.anytype
       - anytype_data:/root/.config/anytype
     labels:
       - com.centurylinklabs.watchtower.enable=true
@@ -92,4 +95,5 @@ services:
       - WATCHTOWER_CLEANUP=true
 
 volumes:
+  anytype_home:
   anytype_data:
