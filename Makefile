@@ -1,11 +1,14 @@
 COMPOSE := docker compose
 HTPASSWD_FILE := .htpasswd
 
-.PHONY: up update dashboard-passwd
+.PHONY: up watchtower update dashboard-passwd
 
 up:
 	mkdir -p ./data
 	$(COMPOSE) -f docker-compose.yml up -d --pull always
+
+watchtower:
+	COMPOSE_PROFILES=watchtower $(COMPOSE) -f docker-compose.yml up -d --pull always watchtower
 
 update:
 	git fetch origin && git checkout -B main origin/main

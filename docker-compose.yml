@@ -79,5 +79,17 @@ services:
     expose:
       - "9223"
 
+  watchtower:
+    image: ghcr.io/nicholas-fedor/watchtower:latest
+    restart: unless-stopped
+    logging: *default-logging
+    profiles: ["watchtower"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_SCHEDULE=0 0 9 * * *
+      - WATCHTOWER_LABEL_ENABLE=true
+      - WATCHTOWER_CLEANUP=true
+
 volumes:
   anytype_data:
