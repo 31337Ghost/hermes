@@ -1,0 +1,75 @@
+name: ${COMPOSE_PROJECT_NAME:?Set a unique COMPOSE_PROJECT_NAME in .env}
+
+services:
+  agent:
+    depends_on:
+      cdp-proxy:
+        condition: service_started
+    environment:
+      BROWSER_CDP_URL: http://cdp-proxy:9223
+
+  browser:
+    image: ${BROWSER_IMAGE:-lscr.io/linuxserver/chromium@sha256:4c7b9086d2e5054b61c9e6b0f75efceece5befeff2bec3ff543d52e000cee21d}
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+    environment:
+      PUID: ${BROWSER_PUID:-1000}
+      PGID: ${BROWSER_PGID:-1000}
+      TZ: ${TZ:-Etc/UTC}
+      CUSTOM_USER: ${BROWSER_USER:?Set BROWSER_USER in .env}
+      PASSWORD: ${BROWSER_PASSWORD:?Set BROWSER_PASSWORD in .env}
+      HTTP_PROXY: ${BROWSER_PROXY_URL:?Set BROWSER_PROXY_URL in .env}
+      HTTPS_PROXY: ${BROWSER_PROXY_URL:?Set BROWSER_PROXY_URL in .env}
+      NO_PROXY: localhost,127.0.0.1,::1,browser,cdp-proxy
+      BROWSER_EXPECTED_COUNTRY: ${BROWSER_EXPECTED_COUNTRY:-RU}
+      BROWSER_COUNTRY_CHECK_URL: ${BROWSER_COUNTRY_CHECK_URL:-https://ifconfig.co/country-iso}
+      HARDEN_DESKTOP: "true"
+      SELKIES_ENABLE_SHARING: "false|locked"
+      SELKIES_UI_SIDEBAR_SHOW_SHARING: "false|locked"
+      SELKIES_COMMAND_ENABLED: "false|locked"
+      SELKIES_UI_SIDEBAR_SHOW_FILES: "false|locked"
+      SELKIES_UI_SIDEBAR_SHOW_APPS: "false|locked"
+      CHROME_CLI: >-
+        --user-data-dir=/config/chromium-profile
+        --remote-debugging-port=9222
+        --proxy-server=${BROWSER_PROXY_URL:?Set BROWSER_PROXY_URL in .env}
+        --disable-quic
+        --force-webrtc-ip-handling-policy=disable_non_proxied_udp
+        --no-first-run
+        --no-default-browser-check
+    volumes:
+      - ${BROWSER_PROFILE_DIR:?Set a unique BROWSER_PROFILE_DIR in .env}:/config
+      - ./scripts/browser-profile-init.sh:/custom-cont-init.d/browser-profile-init:ro
+      - ./scripts/browser-cdp-relay.py:/custom-services.d/browser-cdp-relay:ro
+    ports:
+      - "${BROWSER_BIND_HOST:-127.0.0.1}:${BROWSER_HTTPS_PORT:?Set a unique BROWSER_HTTPS_PORT in .env}:3001"
+    expose:
+      - "9223"
+    shm_size: ${BROWSER_SHM_SIZE:-2gb}
+    mem_limit: ${BROWSER_MEMORY_LIMIT:-2g}
+    cpus: ${BROWSER_CPUS:-2.0}
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 30s
+    networks:
+      - browser-control
+      - browser-egress
+
+  cdp-proxy:
+    depends_on:
+      - browser
+    environment:
+      CDP_HOST: browser
+      CDP_HOST_PORT: 9223
+    networks:
+      - cdp-client
+      - browser-control
+
+networks:
+  browser-control:
+    internal: true
+  browser-egress:

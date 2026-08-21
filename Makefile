@@ -1,7 +1,8 @@
 COMPOSE := docker compose
+BROWSER_COMPOSE := $(COMPOSE) -f docker-compose.yml -f docker-compose.browser.yml
 HTPASSWD_FILE := .htpasswd
 
-.PHONY: up watchtower update dashboard-passwd
+.PHONY: up watchtower update dashboard-passwd browser-up browser-check browser-recreate-check browser-status browser-logs browser-stop
 
 up:
 	mkdir -p ./data
@@ -21,3 +22,22 @@ dashboard-passwd:
 	@echo "# $(DASHBOARD_USER):$(PASS)" >> $(HTPASSWD_FILE)
 	@echo "user: $(DASHBOARD_USER)"
 	@echo "password: $(PASS)"
+
+browser-up:
+	mkdir -p ./browser-data
+	$(BROWSER_COMPOSE) up -d browser cdp-proxy agent
+
+browser-check:
+	./scripts/browser-check.sh
+
+browser-recreate-check:
+	./scripts/browser-recreate-check.sh
+
+browser-status:
+	$(BROWSER_COMPOSE) ps browser cdp-proxy
+
+browser-logs:
+	$(BROWSER_COMPOSE) logs -f --tail=200 browser cdp-proxy
+
+browser-stop:
+	$(BROWSER_COMPOSE) stop browser cdp-proxy

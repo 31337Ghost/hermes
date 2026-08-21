@@ -19,6 +19,9 @@ services:
     command: ["gateway", "run"]
     labels:
       - com.centurylinklabs.watchtower.enable=true
+    networks:
+      - default
+      - cdp-client
 
   dashboard:
     image: nousresearch/hermes-agent:latest
@@ -76,11 +79,14 @@ services:
     restart: unless-stopped
     logging: *default-logging
     environment:
+      - CDP_HOST=${CDP_HOST:-host.docker.internal}
       - CDP_HOST_PORT=${CDP_HOST_PORT:-9222}
     volumes:
       - ./nginx-cdp.conf.template:/etc/nginx/templates/default.conf.template:ro
     expose:
       - "9223"
+    networks:
+      - cdp-client
 
   watchtower:
     image: ghcr.io/nicholas-fedor/watchtower:latest
@@ -97,3 +103,6 @@ services:
 volumes:
   anytype_home:
   anytype_data:
+
+networks:
+  cdp-client:

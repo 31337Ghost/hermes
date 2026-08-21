@@ -1,5 +1,5 @@
 upstream chrome_cdp {
-    server host.docker.internal:${CDP_HOST_PORT};
+    server ${CDP_HOST}:${CDP_HOST_PORT};
     keepalive 8;
     keepalive_requests 1000;
     keepalive_time 1h;
@@ -11,6 +11,7 @@ server {
 
     # CDP discovery (HTTP JSON) — keepalive + переписать ws-URL
     location ~* ^/json {
+        if ($http_origin != "") { return 403; }
         proxy_pass http://chrome_cdp;
         proxy_http_version 1.1;
         proxy_set_header Host localhost:${CDP_HOST_PORT};
@@ -28,7 +29,8 @@ server {
 
     # WebSocket CDP туннель — без sub_filter, без буферизации
     location / {
-        proxy_pass http://host.docker.internal:${CDP_HOST_PORT};
+        if ($http_origin != "") { return 403; }
+        proxy_pass http://${CDP_HOST}:${CDP_HOST_PORT};
         proxy_http_version 1.1;
         proxy_set_header Host localhost:${CDP_HOST_PORT};
         proxy_set_header Upgrade    $http_upgrade;
