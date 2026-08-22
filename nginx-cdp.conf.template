@@ -23,8 +23,8 @@ server {
 
         sub_filter_once off;
         sub_filter_types application/json;
-        sub_filter 'ws://localhost:${CDP_HOST_PORT}'  'ws://cdp-proxy:9223';
-        sub_filter 'ws://127.0.0.1:${CDP_HOST_PORT}'  'ws://cdp-proxy:9223';
+        sub_filter 'ws://localhost:${CDP_HOST_PORT}'  'ws://${CDP_PUBLIC_HOST}:${CDP_PUBLIC_PORT}';
+        sub_filter 'ws://127.0.0.1:${CDP_HOST_PORT}'  'ws://${CDP_PUBLIC_HOST}:${CDP_PUBLIC_PORT}';
     }
 
     # WebSocket CDP туннель — без sub_filter, без буферизации

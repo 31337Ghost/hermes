@@ -3,10 +3,10 @@ name: ${COMPOSE_PROJECT_NAME:?Set a unique COMPOSE_PROJECT_NAME in .env}
 services:
   agent:
     depends_on:
-      cdp-proxy:
-        condition: service_started
+      browser-cdp-proxy:
+        condition: service_healthy
     environment:
-      BROWSER_CDP_URL: http://cdp-proxy:9223
+      BROWSER_CDP_URL: http://browser:9223
 
   browser:
     image: ${BROWSER_IMAGE:-lscr.io/linuxserver/chromium@sha256:4c7b9086d2e5054b61c9e6b0f75efceece5befeff2bec3ff543d52e000cee21d}
@@ -24,9 +24,7 @@ services:
       PASSWORD: ${BROWSER_PASSWORD:?Set BROWSER_PASSWORD in .env}
       HTTP_PROXY: ${BROWSER_PROXY_URL:?Set BROWSER_PROXY_URL in .env}
       HTTPS_PROXY: ${BROWSER_PROXY_URL:?Set BROWSER_PROXY_URL in .env}
-      NO_PROXY: localhost,127.0.0.1,::1,browser,cdp-proxy
-      BROWSER_EXPECTED_COUNTRY: ${BROWSER_EXPECTED_COUNTRY:-RU}
-      BROWSER_COUNTRY_CHECK_URL: ${BROWSER_COUNTRY_CHECK_URL:-https://ifconfig.co/country-iso}
+      NO_PROXY: localhost,127.0.0.1,::1,browser
       HARDEN_DESKTOP: "true"
       SELKIES_ENABLE_SHARING: "false|locked"
       SELKIES_UI_SIDEBAR_SHOW_SHARING: "false|locked"
@@ -43,8 +41,6 @@ services:
         --no-default-browser-check
     volumes:
       - ${BROWSER_PROFILE_DIR:?Set a unique BROWSER_PROFILE_DIR in .env}:/config
-      - ./scripts/browser-profile-init.sh:/custom-cont-init.d/browser-profile-init:ro
-      - ./scripts/browser-cdp-relay.py:/custom-services.d/browser-cdp-relay:ro
     ports:
       - "${BROWSER_BIND_HOST:-127.0.0.1}:${BROWSER_HTTPS_PORT:?Set a unique BROWSER_HTTPS_PORT in .env}:3001"
     expose:
@@ -55,21 +51,28 @@ services:
     security_opt:
       - no-new-privileges:true
     stop_grace_period: 30s
-    networks:
-      - browser-control
-      - browser-egress
 
-  cdp-proxy:
+  browser-cdp-proxy:
+    image: nginx:alpine
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
     depends_on:
       - browser
+    network_mode: service:browser
     environment:
-      CDP_HOST: browser
-      CDP_HOST_PORT: 9223
-    networks:
-      - cdp-client
-      - browser-control
-
-networks:
-  browser-control:
-    internal: true
-  browser-egress:
+      CDP_HOST: 127.0.0.1
+      CDP_HOST_PORT: 9222
+      CDP_PUBLIC_HOST: browser
+      CDP_PUBLIC_PORT: 9223
+    volumes:
+      - ./nginx-cdp.conf.template:/etc/nginx/templates/default.conf.template:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9223/json/version >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 10s

@@ -81,6 +81,8 @@ services:
     environment:
       - CDP_HOST=${CDP_HOST:-host.docker.internal}
       - CDP_HOST_PORT=${CDP_HOST_PORT:-9222}
+      - CDP_PUBLIC_HOST=${CDP_PUBLIC_HOST:-cdp-proxy}
+      - CDP_PUBLIC_PORT=${CDP_PUBLIC_PORT:-9223}
     volumes:
       - ./nginx-cdp.conf.template:/etc/nginx/templates/default.conf.template:ro
     expose:
