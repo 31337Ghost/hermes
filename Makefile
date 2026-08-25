@@ -1,14 +1,20 @@
-COMPOSE := docker compose
+COMPOSE := docker compose -f docker-compose.yml
 HTPASSWD_FILE := .htpasswd
 
-.PHONY: up watchtower update dashboard-passwd
+.PHONY: up pull restart logs update dashboard-passwd browser-up browser-status browser-logs
 
 up:
-	mkdir -p ./data
-	$(COMPOSE) -f docker-compose.yml up -d --pull always
+	mkdir -p ./data ./browser-data
+	$(COMPOSE) up -d --pull always --remove-orphans
 
-watchtower:
-	COMPOSE_PROFILES=watchtower $(COMPOSE) -f docker-compose.yml up -d --pull always watchtower
+pull:
+	$(COMPOSE) pull
+
+restart:
+	$(COMPOSE) up -d --force-recreate --remove-orphans
+
+logs:
+	$(COMPOSE) logs -f --tail=200
 
 update:
 	git fetch origin && git checkout -B main origin/main
@@ -21,3 +27,11 @@ dashboard-passwd:
 	@echo "# $(DASHBOARD_USER):$(PASS)" >> $(HTPASSWD_FILE)
 	@echo "user: $(DASHBOARD_USER)"
 	@echo "password: $(PASS)"
+
+browser-up: up
+
+browser-status:
+	$(COMPOSE) ps browser browser-cdp-proxy
+
+browser-logs:
+	$(COMPOSE) logs -f --tail=200 browser browser-cdp-proxy
