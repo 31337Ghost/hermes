@@ -1,15 +1,23 @@
-COMPOSE := docker compose
-BROWSER_COMPOSE := $(COMPOSE) -f docker-compose.yml -f docker-compose.browser.yml
+COMPOSE := docker compose -f docker-compose.yml
 HTPASSWD_FILE := .htpasswd
 
-.PHONY: up watchtower update dashboard-passwd browser-up browser-status browser-logs browser-stop
+.PHONY: up pull restart logs watchtower update dashboard-passwd browser-up browser-status browser-logs
 
 up:
-	mkdir -p ./data
-	$(COMPOSE) -f docker-compose.yml up -d --pull always
+	mkdir -p ./data ./browser-data
+	$(COMPOSE) up -d --pull always --remove-orphans
+
+pull:
+	$(COMPOSE) pull
+
+restart:
+	$(COMPOSE) up -d --force-recreate browser browser-cdp-proxy agent
+
+logs:
+	$(COMPOSE) logs -f --tail=200 agent browser browser-cdp-proxy
 
 watchtower:
-	COMPOSE_PROFILES=watchtower $(COMPOSE) -f docker-compose.yml up -d --pull always watchtower
+	COMPOSE_PROFILES=watchtower $(COMPOSE) up -d --pull always watchtower
 
 update:
 	git fetch origin && git checkout -B main origin/main
@@ -23,15 +31,10 @@ dashboard-passwd:
 	@echo "user: $(DASHBOARD_USER)"
 	@echo "password: $(PASS)"
 
-browser-up:
-	mkdir -p ./browser-data
-	$(BROWSER_COMPOSE) up -d browser browser-cdp-proxy agent
+browser-up: up
 
 browser-status:
-	$(BROWSER_COMPOSE) ps browser browser-cdp-proxy
+	$(COMPOSE) ps browser browser-cdp-proxy
 
 browser-logs:
-	$(BROWSER_COMPOSE) logs -f --tail=200 browser browser-cdp-proxy
-
-browser-stop:
-	$(BROWSER_COMPOSE) stop browser browser-cdp-proxy
+	$(COMPOSE) logs -f --tail=200 browser browser-cdp-proxy

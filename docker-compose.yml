@@ -1,3 +1,5 @@
+name: ${COMPOSE_PROJECT_NAME:?Set a unique COMPOSE_PROJECT_NAME in .env}
+
 x-logging: &default-logging
   driver: json-file
   options:
@@ -9,6 +11,9 @@ services:
     image: nousresearch/hermes-agent:latest
     restart: unless-stopped
     logging: *default-logging
+    depends_on:
+      browser-cdp-proxy:
+        condition: service_healthy
     volumes:
       - ./data:/opt/data
     ports:
@@ -16,12 +21,10 @@ services:
     environment:
       API_SERVER_KEY: ${API_SERVER_KEY}
       API_SERVER_HOST: 0.0.0.0
+      BROWSER_CDP_URL: http://browser:9223
     command: ["gateway", "run"]
     labels:
       - com.centurylinklabs.watchtower.enable=true
-    networks:
-      - default
-      - cdp-client
 
   dashboard:
     image: nousresearch/hermes-agent:latest
@@ -45,8 +48,6 @@ services:
     logging: *default-logging
     depends_on:
       - dashboard
-    networks:
-      - default
     ports:
       - "${DASHBOARD_PORT:-9119}:9119"
     volumes:
@@ -74,21 +75,65 @@ services:
     labels:
       - com.centurylinklabs.watchtower.enable=true
 
-  cdp-proxy:
-    image: nginx:alpine
+  browser:
+    image: ${BROWSER_IMAGE:-lscr.io/linuxserver/chromium@sha256:4c7b9086d2e5054b61c9e6b0f75efceece5befeff2bec3ff543d52e000cee21d}
     restart: unless-stopped
     logging: *default-logging
     environment:
-      - CDP_HOST=${CDP_HOST:-host.docker.internal}
-      - CDP_HOST_PORT=${CDP_HOST_PORT:-9222}
-      - CDP_PUBLIC_HOST=${CDP_PUBLIC_HOST:-cdp-proxy}
-      - CDP_PUBLIC_PORT=${CDP_PUBLIC_PORT:-9223}
+      PUID: ${BROWSER_PUID:-1000}
+      PGID: ${BROWSER_PGID:-1000}
+      TZ: ${TZ:-Etc/UTC}
+      CUSTOM_USER: ${BROWSER_USER:?Set BROWSER_USER in .env}
+      PASSWORD: ${BROWSER_PASSWORD:?Set BROWSER_PASSWORD in .env}
+      HTTP_PROXY: ${BROWSER_PROXY_URL:?Set BROWSER_PROXY_URL in .env}
+      HTTPS_PROXY: ${BROWSER_PROXY_URL:?Set BROWSER_PROXY_URL in .env}
+      NO_PROXY: localhost,127.0.0.1,::1,browser
+      HARDEN_DESKTOP: "true"
+      SELKIES_ENABLE_SHARING: "false|locked"
+      SELKIES_UI_SIDEBAR_SHOW_SHARING: "false|locked"
+      SELKIES_COMMAND_ENABLED: "false|locked"
+      SELKIES_UI_SIDEBAR_SHOW_FILES: "false|locked"
+      SELKIES_UI_SIDEBAR_SHOW_APPS: "false|locked"
+      CHROME_CLI: >-
+        --remote-debugging-port=9222
+        --proxy-server=${BROWSER_PROXY_URL:?Set BROWSER_PROXY_URL in .env}
+        --disable-quic
+        --force-webrtc-ip-handling-policy=disable_non_proxied_udp
+        --no-first-run
+        --no-default-browser-check
     volumes:
-      - ./nginx-cdp.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ${BROWSER_PROFILE_DIR:?Set a unique BROWSER_PROFILE_DIR in .env}:/config
+    ports:
+      - "${BROWSER_BIND_HOST:-127.0.0.1}:${BROWSER_HTTPS_PORT:?Set a unique BROWSER_HTTPS_PORT in .env}:3001"
     expose:
       - "9223"
-    networks:
-      - cdp-client
+    shm_size: ${BROWSER_SHM_SIZE:-2gb}
+    mem_limit: ${BROWSER_MEMORY_LIMIT:-2g}
+    cpus: ${BROWSER_CPUS:-2.0}
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 30s
+
+  browser-cdp-proxy:
+    image: nginx:alpine
+    restart: unless-stopped
+    logging: *default-logging
+    depends_on:
+      - browser
+    network_mode: service:browser
+    environment:
+      CDP_HOST: 127.0.0.1
+      CDP_HOST_PORT: 9222
+      CDP_PUBLIC_HOST: browser
+      CDP_PUBLIC_PORT: 9223
+    volumes:
+      - ./nginx-cdp.conf.template:/etc/nginx/templates/default.conf.template:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9223/json/version >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 10s
 
   watchtower:
     image: ghcr.io/nicholas-fedor/watchtower:latest
@@ -105,6 +150,3 @@ services:
 volumes:
   anytype_home:
   anytype_data:
-
-networks:
-  cdp-client:
