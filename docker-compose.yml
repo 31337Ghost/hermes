@@ -23,8 +23,6 @@ services:
       API_SERVER_HOST: 0.0.0.0
       BROWSER_CDP_URL: http://browser:9223
     command: ["gateway", "run"]
-    labels:
-      - com.centurylinklabs.watchtower.enable=true
 
   dashboard:
     image: nousresearch/hermes-agent:latest
@@ -39,8 +37,6 @@ services:
     expose:
       - "9119"
     command: ["dashboard", "--host", "0.0.0.0", "--insecure"]
-    labels:
-      - com.centurylinklabs.watchtower.enable=true
 
   dashboard-proxy:
     image: nginx:alpine
@@ -72,8 +68,6 @@ services:
     volumes:
       - anytype_home:/root/.anytype
       - anytype_data:/root/.config/anytype
-    labels:
-      - com.centurylinklabs.watchtower.enable=true
 
   browser:
     image: ${BROWSER_IMAGE:-lscr.io/linuxserver/chromium@sha256:4c7b9086d2e5054b61c9e6b0f75efceece5befeff2bec3ff543d52e000cee21d}
@@ -134,18 +128,6 @@ services:
       timeout: 3s
       retries: 24
       start_period: 10s
-
-  watchtower:
-    image: ghcr.io/nicholas-fedor/watchtower:latest
-    restart: unless-stopped
-    logging: *default-logging
-    profiles: ["watchtower"]
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      - WATCHTOWER_SCHEDULE=0 0 9 * * *
-      - WATCHTOWER_LABEL_ENABLE=true
-      - WATCHTOWER_CLEANUP=true
 
 volumes:
   anytype_home:
