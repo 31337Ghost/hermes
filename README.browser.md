@@ -45,6 +45,14 @@ Open `https://127.0.0.1:<BROWSER_HTTPS_PORT>/`. The interface uses a self-signed
 
 `browser-cdp-proxy` has a healthcheck against Chromium's CDP discovery endpoint. The agent starts only after that healthcheck passes; `make browser-status` shows the resulting health state. The browser profile lives entirely under `BROWSER_PROFILE_DIR`, so cookies and logins survive container recreation through the bind mount.
 
+## Give Hermes the browser operating skill
+
+The reusable [container-browser skill](skills/container-browser/SKILL.md) teaches the agent how to use the persistent browser, hand a login/CAPTCHA tab to its owner, return the correct GUI link, and clean up only its own tabs.
+
+Follow its [installation and private access-data setup](skills/container-browser/references/setup.md). Install it under the deployment's `data/skills/` and keep the real GUI URL/login/password in the ignored `data/secrets/container-browser.json`, never in the tracked skill. The runtime login/password must match `.env` and be rotated together with it.
+
+The skill does not install a CDP-capable tool, configure a public URL, or change a running deployment. It reports missing prerequisites instead of silently opening a different browser.
+
 ## Isolation and security
 
 - The GUI port binds to `127.0.0.1` by default. Do not change `BROWSER_BIND_HOST` to `0.0.0.0` for public exposure.
