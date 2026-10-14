@@ -83,6 +83,7 @@ services:
       HTTPS_PROXY: ${BROWSER_PROXY_URL:?Set BROWSER_PROXY_URL in .env}
       NO_PROXY: localhost,127.0.0.1,::1,browser
       HARDEN_DESKTOP: "true"
+      RESTART_APP: "true"
       SELKIES_ENABLE_SHARING: "false|locked"
       SELKIES_UI_SIDEBAR_SHOW_SHARING: "false|locked"
       SELKIES_COMMAND_ENABLED: "false|locked"
